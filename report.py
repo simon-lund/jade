@@ -100,6 +100,7 @@ def table(head: tuple, body: list):
     header = f"| Rank  | {'|'.join(head)} |"
     table.append(header)
     separator = len(head) * "| ----" + "|"
+    table.append(separator)
 
     for i, d in enumerate(body):
         row = f"| {i + 1} | {'|'.join([f'{e}' for e in d])} |"
@@ -117,6 +118,13 @@ def generate():
     )
     only_pkg = lambda x: x[len(DOMAIN) + 1 :] if x.startswith(DOMAIN) else x
 
+    # group classes by packages
+    packages = defaultdict(list)
+
+    for c in DEPGRAPH:
+        p = c.rpartition(".")[0]
+        packages[p].append(c)
+
     # create graphs
     for m in MEASURES:
         plot_measurement_values(m)
@@ -127,12 +135,18 @@ def generate():
     plot_comparison("dcm_cc", "dcm_lcom3")
     plot_comparison("noc", "dcm_lcom3")
 
-    # group classes by packages
-    packages = defaultdict(list)
+    # create correlation matrix
+    corr_data = {}
 
-    for c in DEPGRAPH:
-        p = c.rpartition(".")[0]
-        packages[p].append(c)
+    for m in sorted(MEASURES.keys()):
+        corr_data[MEASURES[m].label] = [DATA[m][p] for p in sorted(packages.keys())]
+
+    df = pd.DataFrame(corr_data, columns=[MEASURES[m].label for m in sorted(MEASURES.keys())])
+
+    corrMatrix = df.corr(method="pearson")
+    sn.heatmap(corrMatrix, annot=True)
+    plt.xticks(rotation=45)
+    plt.savefig("./graphs/corr_matrix.png", bbox_inches="tight")
 
     # generate report
     date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -140,11 +154,13 @@ def generate():
 
     write("# Report")
     write(
-        f"This Report for software system with domain {DOMAIN} was created at {date} based on dot file {DOTFILE_PATH}."
+        f"This report for the software system with domain {DOMAIN} was created at {date} based on dot file *{DOTFILE_PATH}*."
     )
 
-    write("## Graphs")
-    write("Graphs were generated and stored in the folder *./graphs*")
+    write("## Graphs & Data")
+    write("- Data sets for all measures can be found in the folder *./data*")
+    write("- Graphs were generated and stored in the folder *./graphs*")
+    write("- Correlation matrix was generated and stored in the folder *./graphs*")
 
     # general information
     write("## General Information")
@@ -178,7 +194,7 @@ def generate():
     noc_below_3 = [p for p, v in DATA["noc"].items() if v < 3]
     write(f"- Number of packages with NOC less than 3: {len(noc_below_3)}")
 
-    write("5 packages with highest NOC:")
+    write("- The 5 packages with highest NOC:")
     noc_top5 = [
         (only_pkg(p), v)
         for p, v in list(reversed(sorted(DATA["noc"].items(), key=lambda i: i[1])))[:5]
@@ -191,7 +207,7 @@ def generate():
     ca_zero = [p for p, v in DATA["ca"].items() if v == 0]
     write(f"- Number of packages with Ca == 0: {len(ca_zero)}")
 
-    write("5 packages with highest Ca (+ corresponding Ce and I values):")
+    write("- The 5 packages with highest Ca (+ corresponding Ce and I values):")
     ca_top5 = [
         (only_pkg(p), v, DATA["ce"][p], round(DATA["instability"][p], 3))
         for p, v in list(reversed(sorted(DATA["ca"].items(), key=lambda i: i[1])))[:5]
@@ -204,7 +220,7 @@ def generate():
     ce_zero = [p for p, v in DATA["ce"].items() if v == 0]
     write(f"- Number of packages with Ce == 0: {len(ce_zero)}")
 
-    write("5 packages with highest Ce (+ corresponding Ca and I values):")
+    write("- The 5 packages with highest Ce (+ corresponding Ca and I values):")
     ce_top5 = [
         (only_pkg(p), v, DATA["ca"][p], round(DATA["instability"][p], 3))
         for p, v in list(reversed(sorted(DATA["ce"].items(), key=lambda i: i[1])))[:5]
@@ -220,6 +236,7 @@ def generate():
     i_one = [p for p, v in DATA["instability"].items() if v == 1]
     write(f"- Number of packages with I == 1: {len(i_one)}")
 
+    write("- The 5 packages with highest I:")
     i_top5 = [
         (only_pkg(p), round(v, 3))
         for p, v in list(
@@ -235,7 +252,7 @@ def generate():
     dcm_lcom3_avg = round(sum(DATA["dcm_lcom3"].values()) / len(DATA["dcm_lcom3"]), 0)
     write(f"- Average DCM<sub>LCOM3</sub>: {dcm_lcom3_avg}")
 
-    write("5 packages with highest DCM<sub>LCOM3</sub>:")
+    write("- The 5 packages with highest DCM<sub>LCOM3</sub>:")
     dcm_lcom3_top5 = [
         (only_pkg(p), v)
         for p, v in list(
@@ -248,7 +265,7 @@ def generate():
     write("#### DCM based on similarity measure (DCM<sub>SIM</sub>")
 
     write(
-        "5 packages with highest DCM<sub>SIM</sub> (+ corresponding DCM<sub>CC</sub> value):"
+        "- The 5 packages with highest DCM<sub>SIM</sub> (+ corresponding DCM<sub>CC</sub> value):"
     )
     dcm_sim_top5 = [
         (only_pkg(p), round(v, 3), round(DATA["dcm_cc"][p], 3))
@@ -262,7 +279,7 @@ def generate():
     write("#### DCM based on cohesion count (DCM<sub>CC</sub>")
 
     write(
-        "5 packages with highest DCM<sub>CC</sub> (+ corresponding DCM<sub>SIM</sub> value):"
+        "- The 5 packages with highest DCM<sub>CC</sub> (+ corresponding DCM<sub>SIM</sub> value):"
     )
     dcm_cc_top5 = [
         (only_pkg(p), round(v, 3), round(DATA["dcm_sim"][p], 3))
@@ -290,28 +307,12 @@ def generate():
     dlm_zero = [p for p, v in DATA["dlm"].items() if v == 0]
     write(f"- Number of packages with DLM == 0: {len(dlm_zero)}")
 
-    write("5 packages with highest DLM (+ corresponding NOC and Ce values):")
+    write("- The 5 packages with highest DLM (+ corresponding NOC and Ce values):")
     dlm_top5 = [
         (only_pkg(p), v, DATA["noc"][p], DATA["ce"][p])
         for p, v in list(reversed(sorted(DATA["dlm"].items(), key=lambda i: i[1])))[:5]
     ]
     write(table(("Packages", "DLM", "NOC", "Ce"), dlm_top5))
-
-    # create correlation matrix
-    write("## Correlation Matrix")
-    write("The correlation matrix can also be found in the folder *./graphs*")
-
-    corr_data = {}
-
-    for m in sorted(MEASURES.keys()):
-        corr_data[MEASURES[m].label] = [DATA[m][p] for p in sorted(packages.keys())]
-
-    df = pd.DataFrame(corr_data, columns=[MEASURES[m].label for m in sorted(MEASURES.keys())])
-
-    corrMatrix = df.corr(method="pearson")
-    sn.heatmap(corrMatrix, annot=True)
-    plt.xticks(rotation=45)
-    plt.savefig("./graphs/corr_matrix.png", bbox_inches="tight")
 
     report.close()
 
