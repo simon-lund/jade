@@ -45,7 +45,7 @@ def _dist(a: str, b: str) -> int:
     return len(path_a) + len(path_b)
 
 
-def dlm(pkg_name: str, deps: list) -> int:
+def dlm(pkg_name: str, deps: set) -> int:
     """
     Calculates the dependency locality measure for package pkg and its dependencies
     Format of strings must be "a.b.c.A" (i.e. package tree path + class name)
@@ -195,7 +195,7 @@ def calc() -> None:
 
         # dependency locality measure
         pkg_deps = set().union(*[depgraph[c] for c in pkg_classes])
-        results["dlm"][p] = dlm(p, list(pkg_deps))
+        results["dlm"][p] = dlm(p, pkg_deps)
 
     # store the measurement values
     for m, values in results.items():
