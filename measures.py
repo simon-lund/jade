@@ -1,3 +1,6 @@
+import json
+from collections import defaultdict, OrderedDict
+
 def pdd(pkg: list, depgraph: dict):
     """
     Calculates P-DepDegree
@@ -152,6 +155,14 @@ def instability(pkg, depgraph):
 
     return eff / (aff + eff) if aff + eff > 0 else 0
    
+def group_by_package(depgraph:dict):
+    packages = defaultdict(list)
+
+    for c in depgraph:
+        p = c.rpartition(".")[0]
+        packages[p].append(c)
+
+    return packages
 
 
 def calc() -> None:
@@ -159,17 +170,10 @@ def calc() -> None:
     Calculates all defined measures for all packages based on the dependency graph of a system
     """
 
-    import json
-    from collections import defaultdict, OrderedDict
-
     depgraph = json.load(open("./data/depgraph.json", "r"))
 
     # group classes by packages
-    packages = defaultdict(list)
-
-    for c in depgraph:
-        p = c.rpartition(".")[0]
-        packages[p].append(c)
+    packages = group_by_package(depgraph)
 
     results = defaultdict(dict)
 
