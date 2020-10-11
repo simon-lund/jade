@@ -159,8 +159,8 @@ def generate():
 
     write("## Graphs & Data")
     write("- Data sets for all measures can be found in the folder *./data*")
-    write("- Graphs were generated and stored in the folder *./graphs*")
-    write("- Correlation matrix was generated and stored in the folder *./graphs*")
+    write("- Graphs for all measures can be found in the folder *./graphs*")
+    write("- Correlation matrix for all measures  can be found in the folder *./graphs*")
 
     # general information
     write("## General Information")
